@@ -8,7 +8,7 @@ export default function handler(req: any, res: any) {
     res.status(405).send("Method not allowed");
     return;
   }
-
+  let responded = false;
   const bb = new Busboy({ headers: req.headers });
   const files: UploadedFile[] = [];
 
@@ -72,10 +72,32 @@ export default function handler(req: any, res: any) {
         );
       }
 
-      res.json({ documents: store.listDocuments() });
+      if (!responded) {
+        responded = true;
+        res.json({ documents: store.listDocuments() });
+      }
     } catch (err: any) {
       console.error("[api/ingest] error:", err);
-      res.status(500).json({ error: err.message ?? "Ingestion failed." });
+      if (!responded) {
+        responded = true;
+        res.status(500).json({ error: err.message ?? "Ingestion failed." });
+      }
+    }
+  });
+
+  bb.on("error", (err: any) => {
+    console.error("[api/ingest] busboy error:", err);
+    if (!responded) {
+      responded = true;
+      res.status(500).json({ error: err?.message ?? "Upload parsing failed." });
+    }
+  });
+
+  req.on("aborted", () => {
+    console.warn("[api/ingest] request aborted by client");
+    if (!responded) {
+      responded = true;
+      // client aborted, nothing to send
     }
   });
 

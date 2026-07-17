@@ -84,7 +84,16 @@ export default function App() {
     setUploading(true);
     try {
       const res = await fetch("/api/ingest", { method: "POST", body: formData });
-      const data = await res.json();
+      const contentType = res.headers.get("content-type") || "";
+      let data: any = null;
+      if (contentType.includes("application/json")) {
+        data = await res.json();
+      } else {
+        // non-JSON response (likely HTML error page) — read text for clearer error
+        const text = await res.text();
+        throw new Error(text || "Upload failed (non-JSON response)");
+      }
+
       if (!res.ok) throw new Error(data.error || "Upload failed");
       setDocuments(data.documents ?? []);
     } catch (err: any) {
