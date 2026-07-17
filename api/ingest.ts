@@ -12,15 +12,22 @@ export default function handler(req: any, res: any) {
   const bb = new Busboy({ headers: req.headers });
   const files: UploadedFile[] = [];
 
-  bb.on("file", (_fieldname, fileStream, info) => {
-    const { filename, mimeType } = info;
-    const buffers: Buffer[] = [];
-    fileStream.on("data", (d: Buffer) => buffers.push(d));
-    fileStream.on("end", () => {
-      const buffer = Buffer.concat(buffers);
-      files.push({ originalname: filename, mimetype: mimeType, buffer, size: buffer.length });
-    });
-  });
+  bb.on(
+    "file",
+    (
+      _fieldname: string,
+      fileStream: NodeJS.ReadableStream,
+      info: { filename: string; mimeType: string; encoding?: string }
+    ) => {
+      const { filename, mimeType } = info;
+      const buffers: Buffer[] = [];
+      fileStream.on("data", (d: Buffer) => buffers.push(d));
+      fileStream.on("end", () => {
+        const buffer = Buffer.concat(buffers);
+        files.push({ originalname: filename, mimetype: mimeType, buffer, size: buffer.length });
+      });
+    }
+  );
 
   bb.on("finish", async () => {
     try {
